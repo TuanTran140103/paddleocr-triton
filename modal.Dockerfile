@@ -7,36 +7,40 @@ FROM tuantran2003/paddleocr-vl-api:latest AS gateway-stage
 # Stage 3: Base từ image Baidu (đã có vLLM + genai_server)
 FROM ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddleocr-genai-vllm-server:latest-nvidia-gpu
 
-# Install thêm nếu thiếu (thường không cần vì Baidu image có sẵn)
-# RUN apt-get update \
-#     && apt-get install -y --no-install-recommends curl libgl1 \
-#     && rm -rf /var/lib/apt/lists/*
+USER root
 
 WORKDIR /app
 
 # COPY Triton files (tồn tại ở /app trong source)
 COPY --from=triton-stage /app /app/triton
 
-# COPY TRITON BINARIES - Rất quan trọng vì base image Baidu này có thể không có Triton
+# COPY Triton binaries + libs vào image (base image Baidu không có)
 COPY --from=triton-stage /opt/tritonserver /opt/tritonserver
+
+# FIX: copy đúng các thư viện .so cần thiết cho tritonserver từ triton-stage
+# (thay vì apt-get bị lỗi do Baidu mirror)
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libre2.so.5* /usr/lib/x86_64-linux-gnu/
+RUN ldconfig
+
 ENV PATH="/opt/tritonserver/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:${LD_LIBRARY_PATH}"
 
-# Sửa lỗi version mismatch của huggingface-hub
-RUN pip install "huggingface-hub<1.0" "urllib3<2"
-
-# COPY Gateway files (tồn tại ở /app trong source)
+# COPY Gateway files (code ở /app)
 COPY --from=gateway-stage /app /app/gateway
 
-# Nếu gateway install deps vào site-packages, COPY chúng (nếu có custom wheel hoặc deps không trùng Baidu image)
+# COPY site-packages từ gateway (đây là bước copy các thư viện Gateway vào image)
 COPY --from=gateway-stage /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 
-USER root
+# FIX: sau khi copy site-packages từ gateway (có huggingface-hub==1.5.0),
+# cần pin lại phiên bản để tương thích với transformers/vLLM của image Baidu
+# Phải làm SAU lệnh COPY để không bị ghi đè
+RUN pip install --no-cache-dir "huggingface-hub>=0.34.0,<1.0" "urllib3<2"
 
-# Cấu hình đường dẫn cache cố định
+# Cấu hình cache
 ENV PADDLE_HOME=/root/.paddleocr
 ENV PADDLEX_HOME=/root/.paddlex
 ENV PADDLE_PDX_PAG_MODEL_DIR=/root/.paddlex/models
+ENV PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
 
 # Tạo các thư mục cần thiết và phân quyền
 RUN mkdir -p $PADDLE_HOME $PADDLEX_HOME /paddlex/var/paddlex_model_repo \

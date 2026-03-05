@@ -25,18 +25,25 @@ COPY --from=gateway-stage /usr/local/lib/python3.10/site-packages /usr/local/lib
 
 USER root
 
-RUN mkdir -p /paddlex/var/paddlex_model_repo \
-    && chmod -R 777 /paddlex/var  # Đảm bảo Triton có quyền write nếu cần
+# Cấu hình đường dẫn cache cố định (để dễ dàng mount volume)
+ENV PADDLE_HOME=/root/.paddleocr
+ENV PADDLEX_HOME=/root/.paddlex
+RUN mkdir -p $PADDLE_HOME $PADDLEX_HOME /paddlex/var/paddlex_model_repo \
+    && chmod -R 777 /root /paddlex/var
+
+# [Tùy chọn] Warmup model - Tải model về ngay lúc build để giảm thời gian start container
+# Lưu ý: Bước này cần internet. Nếu build offline hãy comment lại.
+# Chúng ta dùng script python nhỏ để kích hoạt download thông qua paddlex
+RUN python3 -c "import paddlex; paddlex.create_pipeline('PaddleOCR-VL-1.5-0.9B')" || true
 
 # Copy start.sh
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# Env vars
+# Env vars cho app
 ENV HPS_TRITON_URL=http://127.0.0.1:8001
 ENV HPS_VLM_URL=http://127.0.0.1:8081
 ENV UVICORN_WORKERS=4
-# Ưu tiên GPU nếu container có GPU
 ENV PADDLEX_HPS_DEVICE_TYPE=gpu
 
 EXPOSE 8080

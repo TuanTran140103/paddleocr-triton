@@ -1,37 +1,29 @@
 #!/bin/bash
-set -e  # Dừng ngay nếu có lỗi
+set -e
 
-echo "===== Starting PaddleOCR-VL Pipeline (Single Container) ====="
-echo "Current time: $(date)"
-echo "Container has GPU access: $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo 'No GPU detected')"
+echo "🚀 [0/3] Preparing environment..."
+export PADDLE_HOME=${PADDLE_HOME:-"/root/.paddleocr"}
+export PADDLEX_HOME=${PADDLEX_HOME:-"/root/.paddlex"}
 
-# 1. Khởi động Triton server
-echo "[1/3] Starting Triton server..."
-cd /app/triton || { echo "Error: /app/triton not found!"; exit 1; }
+# Tạo các thư mục cache nếu chưa có (để mount volume dễ dàng)
+mkdir -p "$PADDLE_HOME" "$PADDLEX_HOME" /paddlex/var/paddlex_model_repo
 
-# Nếu có server.sh, chạy nó; nếu không, fallback tritonserver trực tiếp
-if [ -f "server.sh" ]; then
-  bash server.sh &
-else
-  echo "Warning: server.sh not found, trying default tritonserver..."
-  tritonserver --model-repository=/models --api-port=8001 --http-port=8000 --grpc-port=8002 &
-fi
+echo "📦 Parallel startup: Triton and vLLM servers..."
+
+# 1. Khởi động Triton server (background)
+echo "🔹 Starting Triton server..."
+(
+    cd /app/triton || exit 1
+    if [ -f "server.sh" ]; then
+        bash server.sh
+    else
+        tritonserver --model-repository=/models --api-port=8001 --http-port=8000 --grpc-port=8002
+    fi
+) &
 TRITON_PID=$!
 
-# Wait Triton ready (tăng timeout lên 120s để an toàn)
-echo "Waiting for Triton healthcheck (max 120s)..."
-for i in {1..24}; do
-  if curl -f -s http://localhost:8000/v2/health/ready > /dev/null; then
-    echo "Triton ready! (took $((i*5)) seconds)"
-    break
-  fi
-  sleep 5
-  echo "Still waiting... ($i/24)"
-done
-[ $i -eq 24 ] && { echo "Error: Triton timeout!"; exit 1; }
-
-# 2. Khởi động vLLM / genai_server
-echo "[2/3] Starting vLLM genai_server..."
+# 2. Khởi động vLLM genai_server (background)
+echo "🔹 Starting vLLM genai_server..."
 paddleocr genai_server \
   --model_name PaddleOCR-VL-1.5-0.9B \
   --host 127.0.0.1 \
@@ -39,20 +31,48 @@ paddleocr genai_server \
   --backend vllm &
 VLM_PID=$!
 
-# Wait vLLM ready (tăng timeout 300s vì model load có thể lâu)
-echo "Waiting for vLLM healthcheck (max 300s)..."
-for i in {1..60}; do
-  if curl -f -s http://localhost:8081/health > /dev/null; then
-    echo "vLLM ready! (took $((i*5)) seconds)"
-    break
-  fi
-  sleep 5
-  echo "Still waiting... ($i/60)"
-done
-[ $i -eq 60 ] && { echo "Error: vLLM timeout!"; exit 1; }
+# Function dọn dẹp khi stop container
+cleanup() {
+    echo "🛑 Stopping servers..."
+    kill $TRITON_PID $VLM_PID 2>/dev/null || true
+    exit 0
+}
+trap cleanup SIGTERM SIGINT
+
+# Function check health
+wait_for_service() {
+    local name=$1
+    local url=$2
+    local timeout=$3
+    echo "⏳ Waiting for $name at $url (max ${timeout}s)..."
+    local start_time=$(date +%s)
+    while true; do
+        if curl -f -s "$url" > /dev/null; then
+            echo "✅ $name is ready!"
+            return 0
+        fi
+        local current_time=$(date +%s)
+        local elapsed=$((current_time - start_time))
+        if [ $elapsed -gt $timeout ]; then
+            echo "❌ Error: $name timeout after ${timeout}s"
+            return 1
+        fi
+        sleep 5
+    done
+}
+
+# Đợi cả 2 dịch vụ sẵn sàng
+wait_for_service "Triton" "http://localhost:8000/v2/health/ready" 120 &
+WAIT_TRITON_PID=$!
+
+wait_for_service "vLLM" "http://localhost:8081/health" 300 &
+WAIT_VLM_PID=$!
+
+wait $WAIT_TRITON_PID $WAIT_VLM_PID
 
 # 3. Khởi động Gateway API
-echo "[3/3] Starting Gateway API..."
+echo "🚀 [3/3] Starting Gateway API..."
 cd /app/gateway || { echo "Error: /app/gateway not found!"; exit 1; }
 
+# Chạy Uvicorn trực tiếp (thay thế process hiện tại để nhận tín hiệu OS)
 exec uvicorn --host 0.0.0.0 --port 8080 --workers ${UVICORN_WORKERS:-4} app:app

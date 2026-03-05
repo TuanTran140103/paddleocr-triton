@@ -32,4 +32,6 @@ jobs:
           push: true
           tags: tuantran2003/paddleocr-vl-full:latest
           platforms: linux/amd64
-          no-cache: true              # Build sạch để tránh lỗi cache cũ
+          # no-cache: true              # Build sạch để tránh lỗi cache cũ
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

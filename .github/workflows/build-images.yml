@@ -29,4 +29,6 @@ jobs:
           platforms: linux/amd64
           build-args: |
             DEVICE_TYPE=cpu  # Force CPU để giảm size image, tránh lỗi space
-          no-cache: true     # Build từ scratch mỗi lần
+          # no-cache: true     # Build từ scratch mỗi lần
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

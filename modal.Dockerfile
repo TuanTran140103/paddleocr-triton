@@ -23,6 +23,8 @@ COPY --from=gateway-stage /app /app/gateway
 # Nếu gateway install deps vào site-packages, COPY chúng (nếu có custom wheel hoặc deps không trùng Baidu image)
 COPY --from=gateway-stage /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 
+USER root
+
 # Copy start.sh
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh

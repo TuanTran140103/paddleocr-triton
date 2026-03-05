@@ -31,7 +31,8 @@ RUN chmod +x /app/start.sh
 ENV HPS_TRITON_URL=http://127.0.0.1:8001
 ENV HPS_VLM_URL=http://127.0.0.1:8081
 ENV UVICORN_WORKERS=4
-ENV PADDLEX_HPS_DEVICE_TYPE=gpu  # Ưu tiên GPU nếu container có GPU
+# Ưu tiên GPU nếu container có GPU
+ENV PADDLEX_HPS_DEVICE_TYPE=gpu
 
 EXPOSE 8080
 

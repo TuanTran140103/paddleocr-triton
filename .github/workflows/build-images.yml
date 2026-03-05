@@ -1,9 +1,7 @@
 name: Build and Push PaddleOCR-VL Images
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:  # Run manual từ UI
+  workflow_dispatch: # Chỉ chạy thủ công khi cần
 
 jobs:
   build-triton:

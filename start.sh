@@ -1,16 +1,30 @@
+#!/bin/bash
+set -e
+
 echo "🚀 [0/3] Preparing environment..."
 
-# 1. Liên kết các Volume từ Modal (nếu có)
-# Model cache (PaddleX & PaddleOCR)
-export PADDLE_HOME=${PADDLE_HOME:-"/root/.paddleocr"}
-export PADDLEX_HOME=${PADDLEX_HOME:-"/root/.paddlex"}
+# Xác định user đang chạy để fix lỗi cache path
+CURRENT_USER=$(whoami)
+echo "Running as user: $CURRENT_USER"
 
+# Ép HOME về /root hoặc /home/paddleocr để match với Volume mount
+export HOME=${HOME:-"/root"}
+export PADDLE_HOME="$HOME/.paddleocr"
+export PADDLEX_HOME="$HOME/.paddlex"
+export PADDLE_PDX_PAG_MODEL_DIR="$PADDLEX_HOME/models"
+
+# Thêm path Triton nếu nó nằm ở các thư mục mặc định của Baidu/NVIDIA
+export PATH=$PATH:/opt/tritonserver/bin:/usr/local/nvidia/bin
+
+# 1. Liên kết các Volume từ Modal (nếu có)
 if [ -d "/mnt/paddlex" ]; then
     echo "Found Modal Volume at /mnt/paddlex, linking..."
+    mkdir -p /mnt/paddlex
     rm -rf "$PADDLEX_HOME" && ln -s /mnt/paddlex "$PADDLEX_HOME"
 fi
 if [ -d "/mnt/paddleocr" ]; then
     echo "Found Modal Volume at /mnt/paddleocr, linking..."
+    mkdir -p /mnt/paddleocr
     rm -rf "$PADDLE_HOME" && ln -s /mnt/paddleocr "$PADDLE_HOME"
 fi
 
@@ -19,12 +33,12 @@ TRITON_REPO_DIR="/paddlex/var/paddlex_model_repo"
 if [ -d "/mnt/paddlex_var" ]; then
     echo "Found Modal Volume at /mnt/paddlex_var, linking Triton repo..."
     mkdir -p /mnt/paddlex_var/paddlex_model_repo
-    # Xoá thư mục tĩnh trong image và thay bằng symlink tới Volume
     rm -rf "/paddlex/var" && ln -s /mnt/paddlex_var "/paddlex/var"
 fi
 
 # Đảm bảo các thư mục tồn tại
 mkdir -p "$PADDLE_HOME" "$PADDLEX_HOME" "$TRITON_REPO_DIR"
+
 
 echo "📦 Parallel startup: Triton and vLLM servers..."
 

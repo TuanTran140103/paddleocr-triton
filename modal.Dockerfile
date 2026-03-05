@@ -17,6 +17,10 @@ WORKDIR /app
 # COPY Triton files (tồn tại ở /app trong source)
 COPY --from=triton-stage /app /app/triton
 
+# COPY TRITON BINARIES - Rất quan trọng vì base image Baidu này có thể không có Triton
+COPY --from=triton-stage /opt/tritonserver /opt/tritonserver
+ENV PATH="/opt/tritonserver/bin:${PATH}"
+
 # COPY Gateway files (tồn tại ở /app trong source)
 COPY --from=gateway-stage /app /app/gateway
 

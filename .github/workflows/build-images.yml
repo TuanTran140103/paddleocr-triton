@@ -1,0 +1,34 @@
+name: Build and Push PaddleOCR-VL Images
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Run manual từ UI
+
+jobs:
+  build-triton:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Triton
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: tritonserver.Dockerfile
+          push: true
+          tags: tuantran2003/paddleocr-vl-tritonserver:latest
+          platforms: linux/amd64
+          build-args: |
+            DEVICE_TYPE=cpu  # Force CPU để giảm size image, tránh lỗi space
+          no-cache: true     # Build từ scratch mỗi lần

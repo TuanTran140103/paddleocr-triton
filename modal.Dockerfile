@@ -18,8 +18,15 @@ COPY --from=triton-stage /app /app/triton
 COPY --from=triton-stage /opt/tritonserver /opt/tritonserver
 
 # FIX: copy đúng các thư viện .so cần thiết cho tritonserver từ triton-stage
-# (thay vì apt-get bị lỗi do Baidu mirror)
+# (thay vì apt-get bị lỗi do Baidu mirror hoặc khác phiên bản Ubuntu 20 vs 22)
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libre2.so.5* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssl.so.1.1* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libb64.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcurl.so* /usr/lib/x86_64-linux-gnu/
+# libdcgm thường nằm ở /usr/lib/x86_64-linux-gnu/ hoặc /usr/local/dcgm/lib
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libdcgm.so* /usr/lib/x86_64-linux-gnu/
+
 RUN ldconfig
 
 ENV PATH="/opt/tritonserver/bin:${PATH}"
@@ -51,7 +58,7 @@ COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Env vars cho app
-ENV HPS_TRITON_URL=http://127.0.0.1:8001
+ENV HPS_TRITON_URL=127.0.0.1:8001
 ENV HPS_VLM_URL=http://127.0.0.1:8081
 ENV UVICORN_WORKERS=4
 ENV PADDLEX_HPS_DEVICE_TYPE=gpu

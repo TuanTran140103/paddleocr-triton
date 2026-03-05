@@ -25,16 +25,14 @@ COPY --from=gateway-stage /usr/local/lib/python3.10/site-packages /usr/local/lib
 
 USER root
 
-# Cấu hình đường dẫn cache cố định (để dễ dàng mount volume)
+# Cấu hình đường dẫn cache cố định
 ENV PADDLE_HOME=/root/.paddleocr
 ENV PADDLEX_HOME=/root/.paddlex
+ENV PADDLE_PDX_PAG_MODEL_DIR=/root/.paddlex/models
+
+# Tạo các thư mục cần thiết và phân quyền
 RUN mkdir -p $PADDLE_HOME $PADDLEX_HOME /paddlex/var/paddlex_model_repo \
     && chmod -R 777 /root /paddlex/var
-
-# [Tùy chọn] Warmup model - Tải model về ngay lúc build để giảm thời gian start container
-# Lưu ý: Bước này cần internet. Nếu build offline hãy comment lại.
-# Chúng ta dùng script python nhỏ để kích hoạt download thông qua paddlex
-RUN python3 -c "import paddlex; paddlex.create_pipeline('PaddleOCR-VL-1.5-0.9B')" || true
 
 # Copy start.sh
 COPY start.sh /app/start.sh

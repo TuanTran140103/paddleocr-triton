@@ -1,12 +1,30 @@
-#!/bin/bash
-set -e
-
 echo "🚀 [0/3] Preparing environment..."
+
+# 1. Liên kết các Volume từ Modal (nếu có)
+# Model cache (PaddleX & PaddleOCR)
 export PADDLE_HOME=${PADDLE_HOME:-"/root/.paddleocr"}
 export PADDLEX_HOME=${PADDLEX_HOME:-"/root/.paddlex"}
 
-# Tạo các thư mục cache nếu chưa có (để mount volume dễ dàng)
-mkdir -p "$PADDLE_HOME" "$PADDLEX_HOME" /paddlex/var/paddlex_model_repo
+if [ -d "/mnt/paddlex" ]; then
+    echo "Found Modal Volume at /mnt/paddlex, linking..."
+    rm -rf "$PADDLEX_HOME" && ln -s /mnt/paddlex "$PADDLEX_HOME"
+fi
+if [ -d "/mnt/paddleocr" ]; then
+    echo "Found Modal Volume at /mnt/paddleocr, linking..."
+    rm -rf "$PADDLE_HOME" && ln -s /mnt/paddleocr "$PADDLE_HOME"
+fi
+
+# Triton Model Repo
+TRITON_REPO_DIR="/paddlex/var/paddlex_model_repo"
+if [ -d "/mnt/paddlex_var" ]; then
+    echo "Found Modal Volume at /mnt/paddlex_var, linking Triton repo..."
+    mkdir -p /mnt/paddlex_var/paddlex_model_repo
+    # Xoá thư mục tĩnh trong image và thay bằng symlink tới Volume
+    rm -rf "/paddlex/var" && ln -s /mnt/paddlex_var "/paddlex/var"
+fi
+
+# Đảm bảo các thư mục tồn tại
+mkdir -p "$PADDLE_HOME" "$PADDLEX_HOME" "$TRITON_REPO_DIR"
 
 echo "📦 Parallel startup: Triton and vLLM servers..."
 

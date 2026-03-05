@@ -8,9 +8,9 @@ FROM tuantran2003/paddleocr-vl-api:latest AS gateway-stage
 FROM ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddleocr-genai-vllm-server:latest-nvidia-gpu
 
 # Install thêm nếu thiếu (thường không cần vì Baidu image có sẵn)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl libgl1 \
-    && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update \
+#     && apt-get install -y --no-install-recommends curl libgl1 \
+#     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

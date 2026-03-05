@@ -7,11 +7,6 @@ FROM tuantran2003/paddleocr-vl-api:latest AS gateway-stage
 # Stage 3: Base từ image Baidu (đã có vLLM + genai_server)
 FROM ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddleocr-genai-vllm-server:latest-nvidia-gpu
 
-# Install thêm nếu thiếu
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl libgl1 \
-    && rm -rf /var/lib/apt/lists/*
-
 # TẠO THƯ MỤC CHO TRITON MODEL REPO (fix lỗi cp trong server.sh)
 RUN mkdir -p /paddlex/var/paddlex_model_repo \
     && chmod -R 777 /paddlex/var  

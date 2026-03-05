@@ -15,6 +15,10 @@ export PADDLE_PDX_PAG_MODEL_DIR="$PADDLEX_HOME/models"
 
 # Thêm path Triton nếu nó nằm ở các thư mục mặc định của Baidu/NVIDIA
 export PATH=$PATH:/opt/tritonserver/bin:/usr/local/nvidia/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/tritonserver/lib
+
+# Skip connectivity checks for faster startup
+export PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
 
 # 1. Liên kết các Volume từ Modal (nếu có)
 if [ -d "/mnt/paddlex" ]; then

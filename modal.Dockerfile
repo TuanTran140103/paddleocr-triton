@@ -15,7 +15,6 @@ RUN apt-get update \
 # TẠO THƯ MỤC CHO TRITON MODEL REPO (fix lỗi cp trong server.sh)
 RUN mkdir -p /paddlex/var/paddlex_model_repo \
     && chmod -R 777 /paddlex/var  
-    # Đảm bảo permission để Triton write nếu cần
 
 WORKDIR /app
 
@@ -40,7 +39,7 @@ ENV HPS_MAX_CONCURRENT_NON_INFERENCE_REQUESTS=64
 ENV HPS_INFERENCE_TIMEOUT=600
 ENV HPS_LOG_LEVEL=INFO
 ENV UVICORN_WORKERS=4
-ENV PADDLEX_HPS_DEVICE_TYPE=gpu  # Ưu tiên GPU trên Modal
+ENV PADDLEX_HPS_DEVICE_TYPE=gpu
 
 ENV MODEL_NAME=PaddleOCR-VL-1.5-0.9B
 ENV GENAI_PORT=8081

@@ -18,24 +18,27 @@ COPY --from=triton-stage /app /app/triton
 COPY --from=triton-stage /opt/tritonserver /opt/tritonserver
 
 # FIX: copy đúng các thư viện .so cần thiết cho tritonserver từ triton-stage
-# (thay vì apt-get bị lỗi do Baidu mirror hoặc khác phiên bản Ubuntu 20 vs 22)
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libre2.so.5* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssl.so.1.1* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libb64.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcurl.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libdcgm.so* /usr/lib/x86_64-linux-gnu/
+# Thay vì ném thẳng vào /usr/lib/x86_64-linux-gnu/ (có thể làm hỏng curl của Ubuntu 22.04),
+# ta bỏ chúng vào 1 thư mục riêng biệt dành riêng cho Triton.
+RUN mkdir -p /opt/triton_deps
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libre2.so.5* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssl.so.1.1* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libb64.so* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcurl.so* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libdcgm.so* /opt/triton_deps/
 # Thêm libssh and libarchive vì Triton backend yêu cầu (Ubuntu 22.04 không có đúng version)
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssh.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libarchive.so.13* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/liblzo2.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libnettle.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libhogweed.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssh.so* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libarchive.so.13* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/liblzo2.so* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libnettle.so* /opt/triton_deps/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libhogweed.so* /opt/triton_deps/
 
-RUN ldconfig
+RUN ldconfig /opt/triton_deps/
 
 ENV PATH="/opt/tritonserver/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:${LD_LIBRARY_PATH}"
+# Thêm /opt/triton_deps vào LD_LIBRARY_PATH để Triton đọc được thư viện cũ
+ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:/opt/triton_deps:${LD_LIBRARY_PATH}"
 
 # COPY Gateway files (code ở /app)
 COPY --from=gateway-stage /app /app/gateway

@@ -31,14 +31,16 @@ COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libhogweed.so* /opt/triton_de
 RUN ldconfig /opt/triton_deps/
 
 ENV PATH="/opt/tritonserver/bin:${PATH}"
-ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/tritonserver/lib:/opt/triton_deps"
+# Thêm /opt/triton_deps vào LD_LIBRARY_PATH. Khởi tạo nếu trống để tránh cảnh báo.
+ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:/opt/triton_deps:${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
 # 2. Cấu hình Python Environment - Thay đổi khi thêm thư viện
 # COPY site-packages từ gateway
 COPY --from=gateway-stage /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 
-# Pin lại phiên bản để tương thích với transformers/vLLM của image Baidu
-RUN pip install --no-cache-dir "huggingface-hub>=0.34.0,<1.0" "urllib3<2"
+# Pin lại phiên bản huggingface-hub. 
+# Bỏ qua giới hạn urllib3 vì tritonclient cần bản mới (2.x) vốn đã có trong base image.
+RUN pip install --no-cache-dir "huggingface-hub>=0.34.0,<1.0"
 
 # 3. Cấu hình Biến môi trường & Thư mục (Static)
 ENV PADDLE_HOME=/root/.paddleocr

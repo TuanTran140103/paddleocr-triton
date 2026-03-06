@@ -24,8 +24,13 @@ COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssl.so.1.1* /usr/lib/x86_6
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1* /usr/lib/x86_64-linux-gnu/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libb64.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcurl.so* /usr/lib/x86_64-linux-gnu/
-# libdcgm thường nằm ở /usr/lib/x86_64-linux-gnu/ hoặc /usr/local/dcgm/lib
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libdcgm.so* /usr/lib/x86_64-linux-gnu/
+# Thêm libssh and libarchive vì Triton backend yêu cầu (Ubuntu 22.04 không có đúng version)
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssh.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libarchive.so.13* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/liblzo2.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libnettle.so* /usr/lib/x86_64-linux-gnu/
+COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libhogweed.so* /usr/lib/x86_64-linux-gnu/
 
 RUN ldconfig
 

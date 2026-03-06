@@ -38,17 +38,17 @@ ENV PATH="/opt/tritonserver/bin:${PATH}"
 # Thêm /opt/triton_deps vào LD_LIBRARY_PATH. Khởi tạo nếu trống để tránh cảnh báo.
 ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:/opt/triton_deps:${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
-# 2. Cấu hình Python Environment - Thay đổi khi thêm thư viện
-# COPY site-packages từ gateway
-COPY --from=gateway-stage /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+# 2. Cấu hình Python Environment - Cài đặt thay vì COPY đè để tránh hỏng metadata
+# Ta KHÔNG copy site-packages từ gateway-stage nữa vì sẽ làm hỏng các liên kết thư viện của image gốc.
+# Thay vào đó, ta cài đặt những gì Gateway và Triton Python backend cần.
+# Thêm --extra-index-url nếu cần tải paddle từ nguồn riêng (Baidu image đã có paddle sẵn nên thường chỉ cần cài paddlex).
+RUN pip install --no-cache-dir \
+    "paddlex[ocr]>=3.4.0" \
+    "huggingface-hub>=0.34.0,<1.0" \
+    "fastapi" "uvicorn" "requests" "python-multipart" "aiofiles" "tritonclient[all]"
 
-# Copy paddlex_hps_server từ triton-stage (đây là backend Python của Triton)
-# Module này nằm ở đường dẫn đặc thù trong image Baidu triton
+# Copy paddlex_hps_server từ triton-stage (đây là backend Python của Triton, hàng hiếm)
 COPY --from=triton-stage /paddlex/py310/lib/python3.10/site-packages/paddlex_hps_server /usr/local/lib/python3.10/site-packages/paddlex_hps_server
-
-# Pin lại phiên bản huggingface-hub. 
-# Bỏ qua giới hạn urllib3 vì tritonclient cần bản mới (2.x) vốn đã có trong base image.
-RUN pip install --no-cache-dir "huggingface-hub>=0.34.0,<1.0"
 
 # 3. Cấu hình Biến môi trường & Thư mục (Static)
 ENV PADDLE_HOME=/root/.paddleocr

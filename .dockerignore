@@ -1,0 +1,12 @@
+.git
+.github
+*.http
+modal_app.py
+modal_microservices.py
+__pycache__
+*.pyc
+*.pyo
+venv
+.venv
+node_modules
+.DS_Store

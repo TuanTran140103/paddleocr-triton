@@ -42,6 +42,10 @@ ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:/opt/triton_deps:${LD_LIBRARY_PATH:+:
 # COPY site-packages từ gateway
 COPY --from=gateway-stage /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 
+# Copy paddlex_hps_server từ triton-stage (đây là backend Python của Triton)
+# Module này nằm ở đường dẫn đặc thù trong image Baidu triton
+COPY --from=triton-stage /paddlex/py310/lib/python3.10/site-packages/paddlex_hps_server /usr/local/lib/python3.10/site-packages/paddlex_hps_server
+
 # Pin lại phiên bản huggingface-hub. 
 # Bỏ qua giới hạn urllib3 vì tritonclient cần bản mới (2.x) vốn đã có trong base image.
 RUN pip install --no-cache-dir "huggingface-hub>=0.34.0,<1.0"

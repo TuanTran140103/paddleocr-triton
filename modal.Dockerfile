@@ -27,6 +27,10 @@ COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libarchive.so.13* /opt/triton
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/liblzo2.so* /opt/triton_deps/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libnettle.so* /opt/triton_deps/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libhogweed.so* /opt/triton_deps/
+# Bổ sung thư viện CUDA 11.0 mà Triton backend đang đòi hỏi
+COPY --from=triton-stage /usr/local/cuda/lib64/libcudart.so.11.0* /opt/triton_deps/
+COPY --from=triton-stage /usr/local/cuda/lib64/libcublas.so.11* /opt/triton_deps/
+COPY --from=triton-stage /usr/local/cuda/lib64/libcublasLt.so.11* /opt/triton_deps/
 
 RUN ldconfig /opt/triton_deps/
 

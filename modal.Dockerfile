@@ -44,19 +44,25 @@ ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:/opt/triton_deps:${LD_LIBRARY_PATH:+:
 # Thêm --extra-index-url nếu cần tải paddle từ nguồn riêng (Baidu image đã có paddle sẵn nên thường chỉ cần cài paddlex).
 # Cài các thư viện phụ thuộc cho Gateway & vLLM API, nhưng thay vì cài paddlex[ocr] từ pip, mình cài dependencies cơ bản.
 # Cài các thư viện phụ thuộc cho Gateway & vLLM API. 
-# KHÔNG cài lại paddlex ở đây để tránh hỏng bản paddlex của image nền (vLLM).
+# Phải cài paddlex[ocr] để kéo đủ các sub-dependencies (shapely, pyclipper, v.v) cần thiết.
 RUN pip install --no-cache-dir \
+    "paddlex[ocr]>=3.4.0" \
     "huggingface-hub>=0.34.0,<1.0" \
     "fastapi" "uvicorn" "requests" "python-multipart" "aiofiles" "tritonclient[all]"
 
 # Copy paddlex_hps_server VÀ paddlex (đã tích hợp sẵn serving_plugin) từ triton-stage
 # Chuyển vào folder ngoài site-packages cố định để Triton Backend sử dụng ưu tiên qua PYTHONPATH
+# Copy paddlex_hps_server VÀ paddlex (đã tích hợp sẵn serving_plugin) từ triton-stage
 COPY --from=triton-stage /paddlex/py310/lib/python3.10/site-packages/paddlex_hps_server /opt/paddlex_hps_packages/paddlex_hps_server
 COPY --from=triton-stage /paddlex/py310/lib/python3.10/site-packages/paddlex /opt/paddlex_hps_packages/paddlex
 
-# HACK: Ép require_serving_plugin luôn trả về True để bỏ qua kiểm tra metadata của pip 
-# vì chúng ta đã copy code plugin thủ công vào PYTHONPATH.
-RUN sed -i 's/return is_extra_available("serving")/return True/g' /opt/paddlex_hps_packages/paddlex/utils/deps.py
+# HACK: Ghi đè các hàm kiểm tra Dependency ở cuối file deps.py 
+# để triệt tiêu mọi thông báo lỗi Missing Dependency giả mạo, vì chúng ta 
+# chạy custom PYTHONPATH và đã pip install paddlex[ocr] ở trên.
+RUN echo "" >> /opt/paddlex_hps_packages/paddlex/utils/deps.py && \
+    echo "def is_extra_available(extra): return True" >> /opt/paddlex_hps_packages/paddlex/utils/deps.py && \
+    echo "def require_extra(*args, **kwargs): pass" >> /opt/paddlex_hps_packages/paddlex/utils/deps.py && \
+    echo "def require_serving_plugin(): pass" >> /opt/paddlex_hps_packages/paddlex/utils/deps.py
 
 COPY paddlex_hps_PaddleOCR-VL_sdk/client /tmp/sdk
 RUN pip install --no-cache-dir /tmp/sdk/paddlex_hps_client-*.whl && rm -rf /tmp/sdk

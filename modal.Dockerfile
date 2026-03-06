@@ -11,23 +11,17 @@ USER root
 
 WORKDIR /app
 
-# COPY Triton files (tồn tại ở /app trong source)
-COPY --from=triton-stage /app /app/triton
-
-# COPY Triton binaries + libs vào image (base image Baidu không có)
+# 1. Cấu hình Cơ sở hạ tầng (Binaries & System Libs) - Ít thay đổi nhất
+# COPY Triton binaries + libs vào image
 COPY --from=triton-stage /opt/tritonserver /opt/tritonserver
 
 # FIX: copy đúng các thư viện .so cần thiết cho tritonserver từ triton-stage
-# Thay vì ném thẳng vào /usr/lib/x86_64-linux-gnu/ (có thể làm hỏng curl của Ubuntu 22.04),
-# ta bỏ chúng vào 1 thư mục riêng biệt dành riêng cho Triton.
 RUN mkdir -p /opt/triton_deps
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libre2.so.5* /opt/triton_deps/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssl.so.1.1* /opt/triton_deps/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1* /opt/triton_deps/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libb64.so* /opt/triton_deps/
-COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libcurl.so* /opt/triton_deps/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libdcgm.so* /opt/triton_deps/
-# Thêm libssh and libarchive vì Triton backend yêu cầu (Ubuntu 22.04 không có đúng version)
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libssh.so* /opt/triton_deps/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libarchive.so.13* /opt/triton_deps/
 COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/liblzo2.so* /opt/triton_deps/
@@ -37,31 +31,27 @@ COPY --from=triton-stage /usr/lib/x86_64-linux-gnu/libhogweed.so* /opt/triton_de
 RUN ldconfig /opt/triton_deps/
 
 ENV PATH="/opt/tritonserver/bin:${PATH}"
-# Thêm /opt/triton_deps vào LD_LIBRARY_PATH để Triton đọc được thư viện cũ
-ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:/opt/triton_deps:${LD_LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/tritonserver/lib:/opt/triton_deps"
 
-# COPY Gateway files (code ở /app)
-COPY --from=gateway-stage /app /app/gateway
-
-# COPY site-packages từ gateway (đây là bước copy các thư viện Gateway vào image)
+# 2. Cấu hình Python Environment - Thay đổi khi thêm thư viện
+# COPY site-packages từ gateway
 COPY --from=gateway-stage /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 
-# FIX: sau khi copy site-packages từ gateway (có huggingface-hub==1.5.0),
-# cần pin lại phiên bản để tương thích với transformers/vLLM của image Baidu
-# Phải làm SAU lệnh COPY để không bị ghi đè
+# Pin lại phiên bản để tương thích với transformers/vLLM của image Baidu
 RUN pip install --no-cache-dir "huggingface-hub>=0.34.0,<1.0" "urllib3<2"
 
-# Cấu hình cache
+# 3. Cấu hình Biến môi trường & Thư mục (Static)
 ENV PADDLE_HOME=/root/.paddleocr
 ENV PADDLEX_HOME=/root/.paddlex
 ENV PADDLE_PDX_PAG_MODEL_DIR=/root/.paddlex/models
 ENV PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
 
-# Tạo các thư mục cần thiết và phân quyền
 RUN mkdir -p $PADDLE_HOME $PADDLEX_HOME /paddlex/var/paddlex_model_repo \
     && chmod -R 777 /root /paddlex/var
 
-# Copy start.sh
+# 4. Copy Mã nguồn ứng dụng - Thay đổi thường xuyên nhất (Bỏ xuống cuối để tối ưu cache)
+COPY --from=triton-stage /app /app/triton
+COPY --from=gateway-stage /app /app/gateway
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 

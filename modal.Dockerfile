@@ -45,7 +45,9 @@ ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:/opt/triton_deps:${LD_LIBRARY_PATH:+:
 # Cài các thư viện phụ thuộc cho Gateway & vLLM API, nhưng thay vì cài paddlex[ocr] từ pip, mình cài dependencies cơ bản.
 # Cài các thư viện phụ thuộc cho Gateway & vLLM API. 
 # Phải cài paddlex[ocr] để kéo đủ các sub-dependencies (shapely, pyclipper, v.v) cần thiết.
+# BỔ SUNG: Cài đặt paddlepaddle-gpu vì Triton backend sử dụng model Paddle inference.
 RUN pip install --no-cache-dir \
+    "paddlepaddle-gpu" \
     "paddlex[ocr]>=3.4.0" \
     "huggingface-hub>=0.34.0,<1.0" \
     "fastapi" "uvicorn" "requests" "python-multipart" "aiofiles" "tritonclient[all]"

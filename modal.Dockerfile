@@ -43,8 +43,9 @@ ENV LD_LIBRARY_PATH="/opt/tritonserver/lib:/opt/triton_deps:${LD_LIBRARY_PATH:+:
 # Thay vào đó, ta cài đặt những gì Gateway và Triton Python backend cần.
 # Thêm --extra-index-url nếu cần tải paddle từ nguồn riêng (Baidu image đã có paddle sẵn nên thường chỉ cần cài paddlex).
 # Cài các thư viện phụ thuộc cho Gateway & vLLM API, nhưng thay vì cài paddlex[ocr] từ pip, mình cài dependencies cơ bản.
+# Cài các thư viện phụ thuộc cho Gateway & vLLM API. 
+# KHÔNG cài lại paddlex ở đây để tránh hỏng bản paddlex của image nền (vLLM).
 RUN pip install --no-cache-dir \
-    "paddlex>=3.4.0" \
     "huggingface-hub>=0.34.0,<1.0" \
     "fastapi" "uvicorn" "requests" "python-multipart" "aiofiles" "tritonclient[all]"
 
@@ -52,6 +53,11 @@ RUN pip install --no-cache-dir \
 # Chuyển vào folder ngoài site-packages cố định để Triton Backend sử dụng ưu tiên qua PYTHONPATH
 COPY --from=triton-stage /paddlex/py310/lib/python3.10/site-packages/paddlex_hps_server /opt/paddlex_hps_packages/paddlex_hps_server
 COPY --from=triton-stage /paddlex/py310/lib/python3.10/site-packages/paddlex /opt/paddlex_hps_packages/paddlex
+
+# HACK: Ép require_serving_plugin luôn trả về True để bỏ qua kiểm tra metadata của pip 
+# vì chúng ta đã copy code plugin thủ công vào PYTHONPATH.
+RUN sed -i 's/return is_extra_available("serving")/return True/g' /opt/paddlex_hps_packages/paddlex/utils/deps.py
+
 COPY paddlex_hps_PaddleOCR-VL_sdk/client /tmp/sdk
 RUN pip install --no-cache-dir /tmp/sdk/paddlex_hps_client-*.whl && rm -rf /tmp/sdk
 ENV PYTHONPATH="/opt/paddlex_hps_packages:${PYTHONPATH}"

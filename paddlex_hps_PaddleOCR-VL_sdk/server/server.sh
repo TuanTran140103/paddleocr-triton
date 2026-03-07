@@ -7,6 +7,13 @@ export PADDLEX_HPS_LOGGING_LEVEL='INFO'
 
 export PADDLEX_HPS_PIPELINE_CONFIG_PATH="${PADDLEX_HPS_PIPELINE_CONFIG_PATH:-$(realpath pipeline_config.yaml)}"
 
+# HACK: Tự động ghi đè URL vLLM từ biến môi trường HPS_VLM_URL
+if [ -n "$HPS_VLM_URL" ]; then
+    echo "🔄 Overriding VLM URL to: $HPS_VLM_URL"
+    # Dùng sed để tìm dòng server_url và thay thế bằng biến môi trường (cần /v1 chuẩn OpenAI)
+    sed -i "s|server_url:.*|server_url: ${HPS_VLM_URL}/v1|g" pipeline_config.yaml
+fi
+
 readonly MODEL_REPO_DIR=/paddlex/var/paddlex_model_repo
 
 rm -rf "${MODEL_REPO_DIR}"

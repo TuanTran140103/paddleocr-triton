@@ -1,11 +1,13 @@
 name: Build and Push PaddleOCR-VL Full Image
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'modal.Dockerfile'   # Chỉ run khi Dockerfile thay đổi
-      - 'start.sh'           # Hoặc start.sh thay đổi
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'modal.Dockerfile'
+  #     - 'start.sh'
+  #     - 'modal_app.py'
+  #     - 'paddlex_hps_PaddleOCR-VL_sdk/server/server.sh'
   workflow_dispatch:         # Run manual từ tab Actions
 
 jobs:

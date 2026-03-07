@@ -1,6 +1,11 @@
 name: Build and Push PaddleOCR-VL Images
 
 on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tritonserver.Dockerfile'
+      - 'paddlex_hps_PaddleOCR-VL_sdk/server/server.sh'
   workflow_dispatch: # Chỉ chạy thủ công khi cần
 
 jobs:
